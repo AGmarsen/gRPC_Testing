@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -23,7 +22,6 @@ type Server struct {
 	name                                    string // Not required but useful if you want to name your server
 	port                                    string // Not required but useful if your server needs to know what port it's listening to
 
-	incrementValue int64      // value that clients can increment.
 	mutex          sync.Mutex // used to lock the server to avoid race conditions.
 }
 
@@ -68,7 +66,6 @@ func launchServer() {
 	server := &Server{
 		name:           *serverName,
 		port:           *port,
-		incrementValue: 0, // gives default value, but not sure if it is necessary
 	}
 
 	gRPC.RegisterTemplateServer(grpcServer, server) //Registers the server to the gRPC server.
@@ -82,40 +79,15 @@ func launchServer() {
 }
 
 // The method format can be found in the pb.go file. If the format is wrong, the server type will give an error.
-func (s *Server) Increment(ctx context.Context, Amount *gRPC.Amount) (*gRPC.Ack, error) {
-	// locks the server ensuring no one else can increment the value at the same time.
+func (s *Server) RequestTime(ctx context.Context, actualTime *gRPC.TimeRequest) (*gRPC.ChristianTime, error) {
+	// locks the server ensuring no one else can request the value at the same time.
 	// and unlocks the server when the method is done.
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// increments the value by the amount given in the request,
-	// and returns the new value.
-	s.incrementValue += int64(Amount.GetValue())
-	return &gRPC.Ack{NewValue: s.incrementValue}, nil
-}
-
-func (s *Server) SayHi(msgStream gRPC.Template_SayHiServer) error {
-	for {
-		// get the next message from the stream
-		msg, err := msgStream.Recv()
-
-		// the stream is closed so we can exit the loop
-		if err == io.EOF {
-			break
-		}
-		// some other error
-		if err != nil {
-			return err
-		}
-		// log the message
-		log.Printf("Received message from %s: %s", msg.ClientName, msg.Message)
-	}
-
-	// be a nice server and say goodbye to the client :)
-	ack := &gRPC.Farewell{Message: "Goodbye"}
-	msgStream.SendAndClose(ack)
-
-	return nil
+	
+	
+	return &gRPC.ChristianTime{ActualTime: time.Now().Local().UnixMilli(), Variation: 0}, nil
 }
 
 // sets the logger to use a log.txt file instead of the console
